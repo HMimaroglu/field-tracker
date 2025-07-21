@@ -147,17 +147,20 @@ export class AdminApiClient {
   }
 
   async exportTimesheet(params: {
-    startDate: string;
-    endDate: string;
-    workerIds?: number[];
-    jobIds?: number[];
+    format?: 'csv' | 'xlsx';
+    startDate?: string;
+    endDate?: string;
+    workerId?: number;
+    jobId?: number;
     includeBreaks?: boolean;
     payrollPeriod?: 'weekly' | 'bi-weekly' | 'semi-monthly' | 'monthly';
   }) {
-    return this.request<any>('/api/reports/export', {
-      method: 'POST',
-      body: JSON.stringify(params),
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) query.append(key, value.toString());
     });
+    
+    return this.request<any>(`/api/reports/export?${query.toString()}`);
   }
 
   async getTimesheetReport(params: {
