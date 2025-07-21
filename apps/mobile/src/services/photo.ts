@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from './database';
 import { syncService } from './sync';
+import { locationService, LocationData } from './location';
 
 export interface PhotoData {
   id?: number;
@@ -64,7 +65,7 @@ class PhotoService {
     }
   }
 
-  async capturePhoto(timeEntryId?: number, location?: { latitude: number; longitude: number }): Promise<CameraResult> {
+  async capturePhoto(timeEntryId?: number, location?: LocationData): Promise<CameraResult> {
     try {
       // Check permissions
       const hasPermissions = await this.requestPermissions();
@@ -158,7 +159,7 @@ class PhotoService {
   private async processAndSavePhoto(
     asset: ImagePicker.ImagePickerAsset, 
     timeEntryId?: number,
-    location?: { latitude: number; longitude: number }
+    location?: LocationData
   ): Promise<PhotoData> {
     const offlineGuid = uuidv4();
     const timestamp = new Date();
@@ -196,10 +197,26 @@ class PhotoService {
       }
     }
 
-    // Extract location from EXIF if available and not provided
+    // Use provided location or try to get current location
     let latitude = location?.latitude;
     let longitude = location?.longitude;
 
+    // If no location provided, try to get current location
+    if (!latitude && !longitude) {
+      try {
+        const currentLocation = await locationService.getCurrentLocation();
+        if (currentLocation) {
+          latitude = currentLocation.latitude;
+          longitude = currentLocation.longitude;
+          // Save photo capture location to history
+          await locationService.saveLocationToHistory(currentLocation, 'photo_capture', offlineGuid);
+        }
+      } catch (locationError) {
+        console.warn('Could not get location for photo:', locationError);
+      }
+    }
+
+    // Fallback to EXIF GPS data if still no location
     if (!latitude && !longitude && asset.exif) {
       const gpsData = asset.exif.GPS;
       if (gpsData && gpsData.Latitude && gpsData.Longitude) {

@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { Button, IconButton, Card, Title, Paragraph, Dialog, Portal, Text } from 'react-native-paper';
 import { photoService, PhotoData, CameraResult } from '../services/photo';
+import { LocationData } from '../services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 
 interface PhotoCaptureProps {
   timeEntryId?: number;
-  location?: { latitude: number; longitude: number };
+  location?: LocationData;
   onPhotoTaken?: (photo: PhotoData) => void;
   style?: any;
 }

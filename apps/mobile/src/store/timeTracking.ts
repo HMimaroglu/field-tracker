@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { databaseService, TimeEntry, BreakEntry, Job, BreakType } from '@/services/database';
 import { syncService } from '@/services/sync';
+import { locationService, LocationData } from '@/services/location';
 import { generateOfflineId, getDurationHours, calculateHours } from '@field-tracker/shared-utils';
-import * as Location from 'expo-location';
 
 interface ActiveTimeEntry {
   offlineGuid: string;
@@ -84,13 +84,12 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
       }
 
       // Get current location if permissions allow
-      let location: Location.LocationObject | null = null;
+      let location: LocationData | null = null;
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
+        location = await locationService.getCurrentLocation(true); // High accuracy for job start
+        if (location) {
+          // Save location event to history
+          await locationService.saveLocationToHistory(location, 'job_start', offlineGuid);
         }
       } catch (locationError) {
         console.warn('Could not get location:', locationError);
@@ -106,8 +105,8 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
         jobId,
         job,
         startTime: now,
-        startLatitude: location?.coords.latitude,
-        startLongitude: location?.coords.longitude,
+        startLatitude: location?.latitude,
+        startLongitude: location?.longitude,
         notes,
       };
 
@@ -143,13 +142,12 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
       }
 
       // Get end location if permissions allow
-      let endLocation: Location.LocationObject | null = null;
+      let endLocation: LocationData | null = null;
       try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status === 'granted') {
-          endLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
+        endLocation = await locationService.getCurrentLocation(true); // High accuracy for job end
+        if (endLocation) {
+          // Save location event to history
+          await locationService.saveLocationToHistory(endLocation, 'job_end', activeTimeEntry.offlineGuid);
         }
       } catch (locationError) {
         console.warn('Could not get end location:', locationError);
@@ -175,8 +173,8 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
         endTime,
         startLatitude: activeTimeEntry.startLatitude,
         startLongitude: activeTimeEntry.startLongitude,
-        endLatitude: endLocation?.coords.latitude,
-        endLongitude: endLocation?.coords.longitude,
+        endLatitude: endLocation?.latitude,
+        endLongitude: endLocation?.longitude,
         notes: notes || activeTimeEntry.notes,
         regularHours,
         overtimeHours,

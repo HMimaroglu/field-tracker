@@ -19,8 +19,10 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
 import { BreakDetail } from '../components/BreakDetail';
+import { LocationDisplay } from '../components/LocationDisplay';
 import { photoService, PhotoData } from '../services/photo';
 import { databaseService, TimeEntry } from '../services/database';
+import { locationService } from '../services/location';
 import { formatDuration } from '@field-tracker/shared-utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimeEntryDetail'>;
@@ -247,15 +249,54 @@ export const TimeEntryDetailScreen: React.FC<Props> = ({ route, navigation }) =>
               <>
                 <Divider style={styles.divider} />
                 <Text variant="bodyMedium" style={styles.label}>Locations:</Text>
+                
                 {timeEntry.startLatitude && timeEntry.startLongitude && (
-                  <Text variant="bodySmall" style={styles.location}>
-                    Start: {timeEntry.startLatitude.toFixed(6)}, {timeEntry.startLongitude.toFixed(6)}
-                  </Text>
+                  <View style={styles.locationSection}>
+                    <Text variant="bodySmall" style={styles.locationLabel}>Start Location:</Text>
+                    <LocationDisplay
+                      location={{
+                        latitude: timeEntry.startLatitude,
+                        longitude: timeEntry.startLongitude,
+                        timestamp: new Date(timeEntry.startTime),
+                      }}
+                      showAddress={true}
+                      showRefreshButton={false}
+                      style={styles.locationDisplay}
+                    />
+                  </View>
                 )}
+                
                 {timeEntry.endLatitude && timeEntry.endLongitude && (
-                  <Text variant="bodySmall" style={styles.location}>
-                    End: {timeEntry.endLatitude.toFixed(6)}, {timeEntry.endLongitude.toFixed(6)}
-                  </Text>
+                  <View style={styles.locationSection}>
+                    <Text variant="bodySmall" style={styles.locationLabel}>End Location:</Text>
+                    <LocationDisplay
+                      location={{
+                        latitude: timeEntry.endLatitude,
+                        longitude: timeEntry.endLongitude,
+                        timestamp: timeEntry.endTime ? new Date(timeEntry.endTime) : new Date(),
+                      }}
+                      showAddress={true}
+                      showRefreshButton={false}
+                      style={styles.locationDisplay}
+                    />
+                  </View>
+                )}
+                
+                {timeEntry.startLatitude && timeEntry.startLongitude && 
+                 timeEntry.endLatitude && timeEntry.endLongitude && (
+                  <View style={styles.distanceInfo}>
+                    <Text variant="bodySmall" style={styles.distanceLabel}>
+                      Distance traveled: 
+                    </Text>
+                    <Text variant="bodySmall" style={styles.distanceValue}>
+                      {locationService.calculateDistance(
+                        timeEntry.startLatitude,
+                        timeEntry.startLongitude,
+                        timeEntry.endLatitude,
+                        timeEntry.endLongitude
+                      ).toFixed(0)}m
+                    </Text>
+                  </View>
                 )}
               </>
             )}
@@ -364,6 +405,33 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: '#888',
     fontFamily: 'monospace',
+  },
+  locationSection: {
+    marginTop: 8,
+  },
+  locationLabel: {
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#666',
+  },
+  locationDisplay: {
+    marginBottom: 8,
+  },
+  distanceInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 4,
+  },
+  distanceLabel: {
+    color: '#666',
+  },
+  distanceValue: {
+    fontWeight: '500',
+    color: '#2196F3',
   },
   photoHeader: {
     marginBottom: 16,
