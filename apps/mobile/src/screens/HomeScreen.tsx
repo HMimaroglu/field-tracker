@@ -23,6 +23,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '@/store/auth';
 import { useTimeTrackingStore } from '@/store/timeTracking';
+import { SyncStatus } from '@/components/SyncStatus';
 import { formatDuration } from '@field-tracker/shared-utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -161,6 +162,9 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        {/* Sync Status */}
+        <SyncStatus style={styles.syncStatus} />
+        
         {/* Active Time Entry Card */}
         {isTracking && activeTimeEntry ? (
           <Card style={[styles.card, styles.activeCard]}>
@@ -407,6 +411,9 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     opacity: 0.7,
+  },
+  syncStatus: {
+    marginBottom: 16,
   },
   fab: {
     position: 'absolute',

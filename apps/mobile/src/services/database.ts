@@ -232,7 +232,7 @@ class DatabaseService {
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_time_entries_job ON time_entries(job_id);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_time_entries_sync ON time_entries(is_synced);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_break_entries_time_entry ON break_entries(time_entry_offline_guid);');
-        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_photos_time_entry ON photos(time_entry_offline_guid);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_photos_time_entry ON photos(time_entry_id);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_sync_queue_type ON sync_queue(type);');
 
       }, reject, resolve);
@@ -244,6 +244,58 @@ class DatabaseService {
       throw new Error('Database not initialized. Call init() first.');
     }
     return this.db;
+  }
+
+  public async getDatabase(): Promise<SQLite.SQLiteDatabase> {
+    await this.init();
+    // For the new SQLite API, we'll need to adapt this
+    // For now, return a compatible interface
+    const db = this.getDb();
+    
+    return {
+      runAsync: (sql: string, params?: any[]) => {
+        return new Promise((resolve, reject) => {
+          db.transaction(tx => {
+            tx.executeSql(sql, params, (_, result) => {
+              resolve({ lastInsertRowId: result.insertId, changes: result.rowsAffected });
+            }, (_, error) => {
+              reject(error);
+              return false;
+            });
+          });
+        });
+      },
+      
+      getAllAsync: (sql: string, params?: any[]) => {
+        return new Promise((resolve, reject) => {
+          db.transaction(tx => {
+            tx.executeSql(sql, params, (_, { rows }) => {
+              const result = [];
+              for (let i = 0; i < rows.length; i++) {
+                result.push(rows.item(i));
+              }
+              resolve(result);
+            }, (_, error) => {
+              reject(error);
+              return false;
+            });
+          });
+        });
+      },
+      
+      getFirstAsync: (sql: string, params?: any[]) => {
+        return new Promise((resolve, reject) => {
+          db.transaction(tx => {
+            tx.executeSql(sql, params, (_, { rows }) => {
+              resolve(rows.length > 0 ? rows.item(0) : null);
+            }, (_, error) => {
+              reject(error);
+              return false;
+            });
+          });
+        });
+      },
+    } as SQLite.SQLiteDatabase;
   }
 
   // Time Entries

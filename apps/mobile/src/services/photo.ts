@@ -3,6 +3,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from './database';
+import { syncService } from './sync';
 
 export interface PhotoData {
   id?: number;
@@ -247,6 +248,15 @@ class PhotoService {
     );
 
     photoData.id = result.lastInsertRowId;
+    
+    // Add to sync queue
+    try {
+      await syncService.addToQueue('photo', photoData.offlineGuid, photoData);
+    } catch (syncError) {
+      console.warn('Failed to add photo to sync queue:', syncError);
+      // Don't fail the photo save operation if sync queue fails
+    }
+    
     return photoData;
   }
 

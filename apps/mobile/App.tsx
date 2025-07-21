@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from '@/navigation/AppNavigator';
+import { databaseService } from '@/services/database';
 
 const theme = {
   ...MD3LightTheme,
@@ -21,6 +22,13 @@ const theme = {
 };
 
 export default function App() {
+  useEffect(() => {
+    // Initialize database on app start
+    databaseService.init().catch((error) => {
+      console.error('Failed to initialize database:', error);
+    });
+  }, []);
+
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>

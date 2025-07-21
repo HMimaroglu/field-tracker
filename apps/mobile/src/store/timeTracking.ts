@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { databaseService, TimeEntry, BreakEntry, Job } from '@/services/database';
+import { syncService } from '@/services/sync';
 import { generateOfflineId, getDurationHours, calculateHours } from '@field-tracker/shared-utils';
 import * as Location from 'expo-location';
 
@@ -177,7 +178,18 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
         hasConflict: false,
       };
 
-      await databaseService.createTimeEntry(timeEntry);
+      const createdEntry = await databaseService.createTimeEntry(timeEntry);
+
+      // Add to sync queue
+      try {
+        await syncService.addToQueue('time_entry', timeEntry.offlineGuid, {
+          ...timeEntry,
+          id: createdEntry.id,
+        });
+      } catch (syncError) {
+        console.warn('Failed to add time entry to sync queue:', syncError);
+        // Don't fail the job end operation if sync queue fails
+      }
 
       // Update state
       set({
