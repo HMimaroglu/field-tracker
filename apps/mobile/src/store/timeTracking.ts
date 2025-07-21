@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { databaseService, TimeEntry, BreakEntry, Job } from '@/services/database';
+import { databaseService, TimeEntry, BreakEntry, Job, BreakType } from '@/services/database';
 import { syncService } from '@/services/sync';
 import { generateOfflineId, getDurationHours, calculateHours } from '@field-tracker/shared-utils';
 import * as Location from 'expo-location';
@@ -33,6 +33,8 @@ interface TimeTrackingState {
   // Data
   recentEntries: TimeEntry[];
   jobs: Job[];
+  breakTypes: BreakType[];
+  breaks: BreakEntry[];
 
   // Loading states
   isLoading: boolean;
@@ -45,6 +47,8 @@ interface TimeTrackingState {
   endBreak: () => Promise<void>;
   loadRecentEntries: (workerId: number) => Promise<void>;
   loadJobs: () => Promise<void>;
+  loadBreakTypes: () => Promise<void>;
+  loadBreaks: (timeEntryOfflineGuid?: string) => Promise<void>;
   refreshData: (workerId: number) => Promise<void>;
   clearError: () => void;
 }
@@ -57,6 +61,8 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
   isOnBreak: false,
   recentEntries: [],
   jobs: [],
+  breakTypes: [],
+  breaks: [],
   isLoading: false,
   error: null,
 
@@ -271,8 +277,19 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
         isSynced: false,
       };
 
-      // Note: Would implement createBreakEntry in database service
-      // await databaseService.createBreakEntry(breakEntry);
+      // Create break entry in database
+      const createdBreak = await databaseService.createBreakEntry(breakEntry);
+
+      // Add to sync queue
+      try {
+        await syncService.addToQueue('break_entry', breakEntry.offlineGuid, {
+          ...breakEntry,
+          id: createdBreak.id,
+        });
+      } catch (syncError) {
+        console.warn('Failed to add break entry to sync queue:', syncError);
+        // Don't fail the break end operation if sync queue fails
+      }
 
       set({
         activeBreak: null,
@@ -324,11 +341,50 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     }
   },
 
+  loadBreakTypes: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const breakTypes = await databaseService.getBreakTypes();
+      set({
+        breakTypes,
+        isLoading: false,
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load break types';
+      set({
+        isLoading: false,
+        error: errorMessage,
+      });
+    }
+  },
+
+  loadBreaks: async (timeEntryOfflineGuid?: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const breaks = await databaseService.getBreakEntries(timeEntryOfflineGuid);
+      set({
+        breaks,
+        isLoading: false,
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load breaks';
+      set({
+        isLoading: false,
+        error: errorMessage,
+      });
+    }
+  },
+
   refreshData: async (workerId: number) => {
-    const { loadRecentEntries, loadJobs } = get();
+    const { loadRecentEntries, loadJobs, loadBreakTypes } = get();
     await Promise.all([
       loadRecentEntries(workerId),
       loadJobs(),
+      loadBreakTypes(),
     ]);
   },
 

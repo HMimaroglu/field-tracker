@@ -24,6 +24,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '@/store/auth';
 import { useTimeTrackingStore } from '@/store/timeTracking';
 import { SyncStatus } from '@/components/SyncStatus';
+import { BreakManager } from '@/components/BreakManager';
 import { formatDuration } from '@field-tracker/shared-utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -164,6 +165,9 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* Sync Status */}
         <SyncStatus style={styles.syncStatus} />
+        
+        {/* Break Management */}
+        <BreakManager style={styles.breakManager} />
         
         {/* Active Time Entry Card */}
         {isTracking && activeTimeEntry ? (
@@ -413,6 +417,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   syncStatus: {
+    marginBottom: 16,
+  },
+  breakManager: {
     marginBottom: 16,
   },
   fab: {

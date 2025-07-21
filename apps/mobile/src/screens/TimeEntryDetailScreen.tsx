@@ -18,6 +18,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { PhotoGallery } from '../components/PhotoGallery';
+import { BreakDetail } from '../components/BreakDetail';
 import { photoService, PhotoData } from '../services/photo';
 import { databaseService, TimeEntry } from '../services/database';
 import { formatDuration } from '@field-tracker/shared-utils';
@@ -260,6 +261,9 @@ export const TimeEntryDetailScreen: React.FC<Props> = ({ route, navigation }) =>
             )}
           </Card.Content>
         </Card>
+
+        {/* Break Details */}
+        <BreakDetail timeEntryOfflineGuid={timeEntry.offlineGuid} />
 
         {/* Photo Section */}
         <Card style={styles.card}>

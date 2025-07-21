@@ -235,6 +235,34 @@ class DatabaseService {
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_photos_time_entry ON photos(time_entry_id);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_sync_queue_type ON sync_queue(type);');
 
+        // Insert default break types if they don't exist
+        tx.executeSql(`
+          INSERT OR IGNORE INTO break_types (id, name, is_paid, default_minutes, is_active)
+          VALUES 
+            (1, 'Lunch Break', 0, 30, 1),
+            (2, 'Coffee Break', 1, 15, 1),
+            (3, 'Rest Break', 1, 10, 1),
+            (4, 'Personal Break', 0, 15, 1),
+            (5, 'Smoke Break', 0, 10, 1)
+        `);
+
+        // Insert default jobs for testing if they don't exist
+        tx.executeSql(`
+          INSERT OR IGNORE INTO jobs (id, job_code, name, description, is_active)
+          VALUES 
+            (1, 'MAINT-001', 'HVAC Maintenance', 'Heating, ventilation, and air conditioning maintenance', 1),
+            (2, 'PLUMB-001', 'Plumbing Repair', 'General plumbing repairs and installations', 1),
+            (3, 'ELECT-001', 'Electrical Work', 'Electrical installations and repairs', 1),
+            (4, 'CLEAN-001', 'Facility Cleaning', 'General facility cleaning and maintenance', 1),
+            (5, 'LAND-001', 'Landscaping', 'Grounds keeping and landscaping work', 1)
+        `);
+
+        // Insert a test worker if it doesn't exist
+        tx.executeSql(`
+          INSERT OR IGNORE INTO workers (id, employee_id, name, is_active)
+          VALUES (1, 'EMP001', 'Test Worker', 1)
+        `);
+
       }, reject, resolve);
     });
   }
@@ -408,6 +436,125 @@ class DatabaseService {
           return false;
         });
       });
+    });
+  }
+
+  // Break Entries
+  async createBreakEntry(entry: Omit<BreakEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<BreakEntry> {
+    const db = this.getDb();
+    const now = new Date().toISOString();
+    
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(`
+          INSERT INTO break_entries (
+            offline_guid, time_entry_offline_guid, break_type_id, start_time, end_time,
+            duration_minutes, notes, is_synced, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          entry.offlineGuid, entry.timeEntryOfflineGuid, entry.breakTypeId,
+          entry.startTime, entry.endTime, entry.durationMinutes, entry.notes,
+          entry.isSynced ? 1 : 0, now, now
+        ], (_, result) => {
+          resolve({
+            ...entry,
+            id: result.insertId,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }, (_, error) => {
+          reject(error);
+          return false;
+        });
+      });
+    });
+  }
+
+  async getBreakEntries(timeEntryOfflineGuid?: string): Promise<BreakEntry[]> {
+    const db = this.getDb();
+    
+    const sql = timeEntryOfflineGuid 
+      ? 'SELECT * FROM break_entries WHERE time_entry_offline_guid = ? ORDER BY created_at DESC'
+      : 'SELECT * FROM break_entries ORDER BY created_at DESC LIMIT 50';
+    
+    const params = timeEntryOfflineGuid ? [timeEntryOfflineGuid] : [];
+    
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(sql, params, (_, { rows }) => {
+          const entries = [];
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows.item(i);
+            entries.push({
+              id: row.id,
+              offlineGuid: row.offline_guid,
+              timeEntryOfflineGuid: row.time_entry_offline_guid,
+              breakTypeId: row.break_type_id,
+              startTime: row.start_time,
+              endTime: row.end_time,
+              durationMinutes: row.duration_minutes,
+              notes: row.notes,
+              isSynced: Boolean(row.is_synced),
+              createdAt: row.created_at,
+              updatedAt: row.updated_at,
+            });
+          }
+          resolve(entries);
+        }, (_, error) => {
+          reject(error);
+          return false;
+        });
+      });
+    });
+  }
+
+  // Break Types (cached from server)
+  async getBreakTypes(): Promise<BreakType[]> {
+    const db = this.getDb();
+    
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(
+          'SELECT * FROM break_types WHERE is_active = 1 ORDER BY name ASC',
+          [],
+          (_, { rows }) => {
+            const breakTypes = [];
+            for (let i = 0; i < rows.length; i++) {
+              const row = rows.item(i);
+              breakTypes.push({
+                id: row.id,
+                name: row.name,
+                isPaid: Boolean(row.is_paid),
+                defaultMinutes: row.default_minutes,
+                isActive: Boolean(row.is_active),
+              });
+            }
+            resolve(breakTypes);
+          },
+          (_, error) => {
+            reject(error);
+            return false;
+          }
+        );
+      });
+    });
+  }
+
+  async upsertBreakTypes(breakTypes: BreakType[]): Promise<void> {
+    const db = this.getDb();
+    
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        breakTypes.forEach(breakType => {
+          tx.executeSql(`
+            INSERT OR REPLACE INTO break_types (id, name, is_paid, default_minutes, is_active)
+            VALUES (?, ?, ?, ?, ?)
+          `, [
+            breakType.id, breakType.name, breakType.isPaid ? 1 : 0,
+            breakType.defaultMinutes, breakType.isActive ? 1 : 0
+          ]);
+        });
+      }, reject, resolve);
     });
   }
 
