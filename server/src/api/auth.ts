@@ -127,4 +127,48 @@ export function createAuthRoutes(fastify: FastifyInstance, db: Database, config:
   
   // License validation endpoint
   fastify.get('/api/auth/license/status', {}, authMiddleware.validateLicenseEndpoint);
+  
+  // License upload endpoint (admin only)
+  fastify.post('/api/license', {
+    preHandler: [authMiddleware.authenticateToken],
+  }, async (request: any, reply) => {
+    try {
+      // Check if user is admin
+      if (request.user?.type !== 'admin') {
+        return reply.code(403).send(createErrorResponse('Admin access required'));
+      }
+
+      const data = await request.file();
+      if (!data) {
+        return reply.code(400).send(createErrorResponse('No file uploaded'));
+      }
+
+      if (!data.filename.endsWith('.license')) {
+        return reply.code(400).send(createErrorResponse('Invalid file type. Only .license files are allowed'));
+      }
+
+      // Read the file buffer
+      const buffer = await data.toBuffer();
+      
+      try {
+        // Use the middleware's license validation to parse and validate the license
+        const result = await authMiddleware.uploadLicense(buffer);
+        
+        if (result.success) {
+          reply.send(createApiResponse({
+            message: 'License uploaded successfully',
+            license: result.license,
+          }));
+        } else {
+          reply.code(400).send(createErrorResponse(result.error || 'Invalid license file'));
+        }
+      } catch (licenseError) {
+        request.log.error({ error: licenseError }, 'License validation failed');
+        reply.code(400).send(createErrorResponse('Invalid or corrupted license file'));
+      }
+    } catch (error) {
+      request.log.error({ error }, 'License upload failed');
+      reply.code(500).send(createErrorResponse('License upload failed'));
+    }
+  });
 }

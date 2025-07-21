@@ -195,6 +195,58 @@ export function createAuthMiddleware(db: Database, config: EnvConfig) {
     reply.send({ success: true, data: status });
   }
   
+  // Upload and install new license
+  async function uploadLicense(licenseBuffer: Buffer) {
+    try {
+      // Parse the license file
+      const signedLicense = parseLicenseFile(licenseBuffer);
+      
+      // Verify the license signature
+      const isValid = verifyLicense(signedLicense, config.LICENSE_PUBLIC_KEY);
+      if (!isValid) {
+        return {
+          success: false,
+          error: 'Invalid license signature'
+        };
+      }
+
+      // Deactivate current license
+      await db
+        .update(licences)
+        .set({ isActive: false })
+        .where(eq(licences.isActive, true));
+
+      // Insert new license
+      const [newLicense] = await db
+        .insert(licences)
+        .values({
+          licenceId: signedLicense.data.licenceId,
+          seatsMax: signedLicense.data.seatsMax,
+          expiryUpdates: signedLicense.data.expiryUpdates || null,
+          signature: signedLicense.signature,
+          isActive: true,
+          uploadedAt: new Date(),
+          uploadedBy: 'admin', // In a full implementation, you'd get this from the authenticated user
+        })
+        .returning();
+
+      return {
+        success: true,
+        license: {
+          licenceId: newLicense.licenceId,
+          seatsMax: newLicense.seatsMax,
+          expiryUpdates: newLicense.expiryUpdates,
+          uploadedAt: newLicense.uploadedAt,
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `License processing failed: ${error instanceof Error ? error.message : error}`
+      };
+    }
+  }
+  
   return {
     authenticateAdmin,
     authenticateWorker,
@@ -202,5 +254,6 @@ export function createAuthMiddleware(db: Database, config: EnvConfig) {
     generateToken,
     validateCurrentLicense,
     validateLicenseEndpoint,
+    uploadLicense,
   };
 }
