@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -18,11 +19,15 @@ import {
   IconButton,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '@/store/auth';
 import { useTimeTrackingStore } from '@/store/timeTracking';
 import { formatDuration } from '@field-tracker/shared-utils';
 
-export const HomeScreen: React.FC = () => {
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const theme = useTheme();
   const { user, logout } = useAuthStore();
   const {
@@ -221,41 +226,50 @@ export const HomeScreen: React.FC = () => {
               : 'In Progress';
 
             return (
-              <Card key={entry.id} style={styles.entryCard}>
-                <Card.Content>
-                  <View style={styles.entryHeader}>
-                    <Text variant="titleSmall">
-                      {job?.name || 'Unknown Job'}
+              <TouchableOpacity 
+                key={entry.id}
+                onPress={() => navigation.navigate('TimeEntryDetail', { timeEntryId: entry.id! })}
+              >
+                <Card style={styles.entryCard}>
+                  <Card.Content>
+                    <View style={styles.entryHeader}>
+                      <Text variant="titleSmall">
+                        {job?.name || 'Unknown Job'}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.duration}>
+                        {duration}
+                      </Text>
+                    </View>
+                    
+                    <Text variant="bodySmall" style={styles.entryDate}>
+                      {new Date(entry.startTime).toLocaleDateString()} • {new Date(entry.startTime).toLocaleTimeString()}
                     </Text>
-                    <Text variant="bodySmall" style={styles.duration}>
-                      {duration}
-                    </Text>
-                  </View>
-                  
-                  <Text variant="bodySmall" style={styles.entryDate}>
-                    {new Date(entry.startTime).toLocaleDateString()} • {new Date(entry.startTime).toLocaleTimeString()}
-                  </Text>
-                  
-                  {entry.notes && (
-                    <Text variant="bodySmall" style={styles.notes}>
-                      {entry.notes}
-                    </Text>
-                  )}
-                  
-                  <View style={styles.entryFooter}>
-                    <Chip
-                      mode="outlined"
-                      compact
-                      style={[
-                        styles.syncChip,
-                        { backgroundColor: entry.isSynced ? theme.colors.primaryContainer : theme.colors.errorContainer }
-                      ]}
-                    >
-                      {entry.isSynced ? 'Synced' : 'Pending'}
-                    </Chip>
-                  </View>
-                </Card.Content>
-              </Card>
+                    
+                    {entry.notes && (
+                      <Text variant="bodySmall" style={styles.notes}>
+                        {entry.notes}
+                      </Text>
+                    )}
+                    
+                    <View style={styles.entryFooter}>
+                      <Chip
+                        mode="outlined"
+                        compact
+                        style={[
+                          styles.syncChip,
+                          { backgroundColor: entry.isSynced ? theme.colors.primaryContainer : theme.colors.errorContainer }
+                        ]}
+                      >
+                        {entry.isSynced ? 'Synced' : 'Pending'}
+                      </Chip>
+                      
+                      <Text variant="bodySmall" style={styles.tapHint}>
+                        Tap for details
+                      </Text>
+                    </View>
+                  </Card.Content>
+                </Card>
+              </TouchableOpacity>
             );
           })
         ) : (
@@ -380,7 +394,12 @@ const styles = StyleSheet.create({
   },
   entryFooter: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tapHint: {
+    color: '#666',
+    fontSize: 12,
   },
   syncChip: {
     height: 24,

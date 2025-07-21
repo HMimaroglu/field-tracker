@@ -4,12 +4,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/store/auth';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
+import { TimeEntryDetailScreen } from '@/screens/TimeEntryDetailScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   JobSelection: undefined;
   TimeEntry: { jobId: number };
+  TimeEntryDetail: { timeEntryId: number };
   Settings: undefined;
 };
 
@@ -37,6 +39,7 @@ export const AppNavigator: React.FC = () => {
         {isAuthenticated ? (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="TimeEntryDetail" component={TimeEntryDetailScreen} />
             {/* Additional authenticated screens will go here */}
           </>
         ) : (

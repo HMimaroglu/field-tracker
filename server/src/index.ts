@@ -17,6 +17,7 @@ import { createSyncRoutes } from './api/sync.js';
 import { createWorkerRoutes } from './api/workers.js';
 import { createJobRoutes } from './api/jobs.js';
 import { createReportsRoutes } from './api/reports.js';
+import { createPhotoRoutes } from './api/photos.js';
 
 import path from 'path';
 
@@ -109,6 +110,7 @@ async function start() {
   createWorkerRoutes(fastify, db);
   createJobRoutes(fastify, db);
   createReportsRoutes(fastify, db);
+  createPhotoRoutes(fastify, db, storage);
   
   // 404 handler
   fastify.setNotFoundHandler((request, reply) => {

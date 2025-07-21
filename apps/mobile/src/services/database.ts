@@ -38,21 +38,18 @@ export interface BreakEntry {
 export interface Photo {
   id?: number;
   offlineGuid: string;
-  timeEntryOfflineGuid: string;
-  filename: string;
-  originalName?: string;
-  localPath: string;
-  fileSize?: number;
-  mimeType?: string;
-  width?: number;
-  height?: number;
-  takenAt: string;
+  timeEntryId?: number;
+  fileName: string;
+  filePath: string;
+  mimeType: string;
+  fileSize: number;
+  compressedSize?: number;
+  capturedAt: string;
   latitude?: number;
   longitude?: number;
   isSynced: boolean;
-  isDeleted: boolean;
+  syncedAt?: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface Worker {
@@ -156,22 +153,19 @@ class DatabaseService {
           CREATE TABLE IF NOT EXISTS photos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             offline_guid TEXT UNIQUE NOT NULL,
-            time_entry_offline_guid TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            original_name TEXT,
-            local_path TEXT NOT NULL,
-            file_size INTEGER,
-            mime_type TEXT,
-            width INTEGER,
-            height INTEGER,
-            taken_at TEXT NOT NULL,
+            time_entry_id INTEGER,
+            file_name TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            mime_type TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            compressed_size INTEGER,
+            captured_at TEXT NOT NULL,
             latitude REAL,
             longitude REAL,
             is_synced INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
+            synced_at TEXT,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY(time_entry_offline_guid) REFERENCES time_entries(offline_guid)
+            FOREIGN KEY(time_entry_id) REFERENCES time_entries(id)
           );
         `);
 
